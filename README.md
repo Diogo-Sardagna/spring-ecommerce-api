@@ -1,169 +1,161 @@
-# spring-ecommerce-api
+# Spring E-commerce API
 
 ![Java](https://img.shields.io/badge/Java-17+-orange?style=flat-square&logo=java)
 ![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-brightgreen?style=flat-square&logo=springboot)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=flat-square&logo=postgresql)
 ![Status](https://img.shields.io/badge/status-in_development-yellow?style=flat-square)
 
-Backend REST API for an e-commerce platform, responsible for managing users, product catalog, shopping cart, and order processing. The project applies layered architecture principles with clear separation between the HTTP, business logic, and data access layers.
+---
 
-Built with Spring Boot 3, Spring Data JPA, and PostgreSQL. Upcoming modules will introduce containerization with Docker, asynchronous messaging with Apache Kafka, and orchestration with Kubernetes.
+API REST completa de e-commerce construída com Spring Boot. Sistema real com carrinho de compras, processamento de pedidos, controle de estoque e busca de produtos.
 
 ---
 
-## Why This Architecture
+## O Problema que Resolvi
 
-The application is structured in four well-defined layers — Controller, Service, Repository, and Model — following a separation of concerns approach that makes the codebase easier to test, maintain, and scale.
+Queria aprender Spring Boot construindo algo além de CRUD básico. Então criei um e-commerce de verdade, com os mesmos desafios de um sistema real:
 
-DTOs are used to decouple the internal domain model from the API contract, preventing implementation details from leaking into request and response payloads. This also allows the API surface to evolve independently of the persistence model.
-
-Spring Data JPA was chosen to reduce boilerplate in data access while still allowing custom queries when needed. PostgreSQL was selected as the production database for its reliability and compatibility with JPA.
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|---|---|
-| Language | Java 17 |
-| Framework | Spring Boot 3 |
-| Persistence | Spring Data JPA + Hibernate |
-| Database | PostgreSQL |
-| Security | Spring Security |
-| Build tool | Maven |
-| Containerization | Docker (in progress) |
-| Messaging | Apache Kafka (upcoming) |
-| Orchestration | Kubernetes (upcoming) |
+- **Carrinho persistente** - Items salvos no banco, não em sessão
+- **Snapshot de preço** - Quando você cria um pedido, guarda o preço daquele momento (produto pode mudar depois)
+- **Controle de estoque** - Verifica disponibilidade antes de adicionar ao carrinho
+- **Soft delete** - Produtos são desativados, não deletados (histórico de pedidos continua funcionando)
+- **Evitar N+1 queries** - Relacionamentos configurados pra não explodir o banco
 
 ---
 
-## Project Structure
+## Stack Técnica
+
+- **Backend:** Java 17, Spring Boot 3.x  
+- **Persistência:** Spring Data JPA, Hibernate, PostgreSQL  
+- **Arquitetura:** Camadas (Controller → Service → Repository)  
+- **Padrões:** DTOs para Request/Response, Soft Delete, Timestamp Automático
+
+---
+
+## Modelagem do Banco
 
 ```
-src/main/java/com/app/ecom/
-├── controller/     # REST endpoints — handles HTTP requests and delegates to services
-├── dto/            # Request and response objects — decouples API from domain model
-├── model/          # JPA entities — mapped to database tables
-├── repository/     # Data access interfaces using Spring Data JPA
-└── service/        # Business logic — orchestrates repositories and enforces rules
+User (1) ──→ (1) Address
+  │
+  ├──→ (N) CartItem ──→ (1) Product
+  │
+  └──→ (N) Order
+           └──→ (N) OrderItem ──→ (1) Product
 ```
 
----
+**Decisões de design:**
 
-## API Overview
-
-### Users
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/users/register` | Register a new user |
-| GET | `/users/{id}` | Retrieve user by ID |
-| PUT | `/users/{id}` | Update user data |
-| DELETE | `/users/{id}` | Remove a user |
-
-### Products
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/products` | Create a new product |
-| GET | `/products` | List all products |
-| GET | `/products/{id}` | Get product details |
-| PUT | `/products/{id}` | Update product |
-| DELETE | `/products/{id}` | Remove product |
-
-### Cart
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/cart` | Add item to cart |
-| GET | `/cart/{userId}` | Get cart for a user |
-| DELETE | `/cart/{itemId}` | Remove item from cart |
-
-### Orders
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/orders` | Place a new order |
-| GET | `/orders/{id}` | Get order details |
-| GET | `/orders/user/{userId}` | List orders by user |
-| PATCH | `/orders/{id}/status` | Update order status |
+- **CartItem e OrderItem separados** - CartItem é temporário, OrderItem é histórico imutável
+- **Price nos items** - Guarda o preço no momento da compra (snapshot), não referencia Product.price
+- **BigDecimal** - Valores monetários precisam ser exatos (nunca usar Double/Float)
+- **Soft delete** - `Product.active = false` em vez de DELETE (mantém integridade dos pedidos antigos)
 
 ---
 
-## Domain Model
+## Features Implementadas
 
+### 1. Gerenciamento de Produtos
+- CRUD completo com soft delete
+- Busca por palavra-chave (nome, descrição, categoria)
+- Controle de estoque automático
+- Apenas produtos ativos aparecem na listagem
+
+### 2. Carrinho de Compras
+```java
+// Se produto já está no carrinho → atualiza quantidade
+// Se é novo → cria CartItem
+// Sempre valida estoque antes de adicionar
 ```
-User (UserRole)
- └── Order (OrderStatus)
-      └── OrderItem
-           └── Product
-User
- └── CartItem
-      └── Product
-Order
- └── Address
+- Adicionar/remover items
+- Atualização automática de subtotal
+- Validação de estoque em tempo real
+- Carrinho persistido no banco (não em memória)
+
+### 3. Sistema de Pedidos
+**Fluxo completo:**
+1. Busca itens do carrinho do usuário
+2. Calcula total
+3. Cria Order com status CONFIRMED
+4. Converte CartItems em OrderItems (snapshot de preço)
+5. Limpa o carrinho
+6. Retorna OrderResponse com todos os detalhes
+
+**Estados do pedido:** PENDING → CONFIRMED → SHIPPED → DELIVERED (ou CANCELLED)
+
+### 4. Gestão de Usuários
+- CRUD de usuários
+- Endereço em entidade separada (OneToOne)
+- Roles: CUSTOMER e ADMIN (preparado pra autorização futura)
+
+---
+
+## Boas Práticas Aplicadas
+
+### Código Limpo
+- **DTOs separados** - Request e Response nunca expõem entidades diretamente
+- **Métodos privados de mapeamento** - `mapToProductResponse()`, `updateUserFromRequest()`
+- **Nomes descritivos** - `clearCart()`, `deleteItemFromCart()`, não abreviações
+- **Single Responsibility** - Cada service cuida de uma entidade
+
+### JPA/Hibernate
+- `@CreationTimestamp` e `@UpdateTimestamp` - Auditoria automática
+- `cascade = CascadeType.ALL` em relacionamentos pai-filho
+- `orphanRemoval = true` - Deleta OrderItems quando Order é deletado
+- Soft delete com campo `active` (não quebra foreign keys)
+
+### Transações
+```java
+@Transactional // Garante atomicidade no addToCart
 ```
+- `addToCart()` é transacional - ou salva tudo ou nada
+- Evita condições de corrida no estoque
 
-| Entity | Description |
-|---|---|
-| `User` | Platform user with role-based access (ADMIN, CUSTOMER) |
-| `Product` | Catalog item with price and stock information |
-| `CartItem` | Transient association between a user and a product before checkout |
-| `Order` | Confirmed purchase with status lifecycle |
-| `OrderItem` | Snapshot of a product at the time of purchase |
-| `Address` | Shipping destination attached to an order |
-| `OrderStatus` | Enum: PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED |
-| `UserRole` | Enum: ADMIN, CUSTOMER |
+### Validações
+- Verificação de estoque antes de adicionar ao carrinho
+- Retornos booleanos claros (`true` = sucesso, `false` = falha)
+- `Optional<>` nos métodos que podem não encontrar resultados
 
 ---
 
-## Running Locally
+## Desafios Técnicos
 
-### Prerequisites
+### 1. Snapshot de Preço
+**Problema:** Se eu guardo só `product_id` no OrderItem, o preço pode mudar depois.  
+**Solução:** Copiei `price` e `quantity` pro OrderItem no momento da compra.
 
-- Java 17+
-- Maven 3.8+
-- Docker and Docker Compose
+### 2. Atualizar vs Criar CartItem
+**Problema:** Se usuário adiciona produto que já está no carrinho, duplica?  
+**Solução:** Query `findByUserAndProduct()` - se existe, soma quantidade; senão, cria novo.
 
-### Steps
-
-```bash
-# Clone the repository
-git clone https://github.com/Diogo-Sardagna/spring-ecommerce-api.git
-cd spring-ecommerce-api
-
-# Start PostgreSQL with Docker
-docker-compose up -d
-
-# Run the application
-./mvnw spring-boot:run
-```
-
-API available at: `http://localhost:8080`
-
-### Environment Variables
-
-| Variable | Description | Default |
-|---|---|---|
-| `DB_URL` | PostgreSQL connection URL | `jdbc:postgresql://localhost:5432/ecomdb` |
-| `DB_USERNAME` | Database user | `postgres` |
-| `DB_PASSWORD` | Database password | — |
+### 3. Soft Delete de Produtos
+**Problema:** Se eu deletar produto, os pedidos antigos quebram.  
+**Solução:** Campo `active = false` + repository retorna só `findByActiveTrue()`.
 
 ---
 
-## Roadmap
+## Próximos Passos
 
-- [x] Layered REST API with Spring Boot
-- [x] JPA entities and repositories
-- [x] Service layer with business logic
-- [x] DTOs for request/response separation
-- [ ] Docker and Docker Compose setup
-- [ ] Spring Cloud Gateway integration
-- [ ] Apache Kafka for async order events
-- [ ] Distributed tracing with Zipkin
-- [ ] Kubernetes deployment manifests
-- [ ] JWT authentication with Spring Security
+**Curto prazo (já planejado):**
+- [ ] Autenticação JWT (substituir header `X-User-ID`)
+- [ ] Spring Security com roles (ADMIN pode criar produtos, CUSTOMER só compra)
+- [ ] Atualizar estoque ao criar pedido (decrementar `stockQuantity`)
+- [ ] Paginação nos endpoints de listagem
+
+**Médio prazo (ideias):**
+- [ ] Histórico de pedidos por usuário (`/api/orders/my-orders`)
+- [ ] Filtros avançados de produtos (preço min/max, categoria)
+- [ ] Integração com gateway de pagamento (Stripe/PagSeguro mockado)
+- [ ] Testes unitários com JUnit/Mockito
 
 ---
 
-## Author
+## Contato
 
-**Diogo Sardagna**  
-Backend Developer — Java | Spring Boot | PostgreSQL  
-[github.com/Diogo-Sardagna](https://github.com/Diogo-Sardagna)
+Se quiser trocar ideia sobre Spring Boot, arquitetura de APIs, ou aquele bug do Hibernate que tá te enlouquecendo:
+
+**LinkedIn:** [Diogo Sardagna](https://www.linkedin.com/in/diogo-sardagna)  
+**Email:** diogosardagna.work@gmail.com
+
+---
+
+**Nota técnica:** O header `X-User-ID` é temporário. No sistema final, o userId virá do token JWT decodificado no filtro de autenticação. Mantive assim pra focar primeiro na lógica de negócio antes de adicionar a camada de segurança.
