@@ -149,13 +149,4 @@ User (1) ──→ (1) Address
 
 ---
 
-## Contato
-
-Se quiser trocar ideia sobre Spring Boot, arquitetura de APIs, ou aquele bug do Hibernate que tá te enlouquecendo:
-
-**LinkedIn:** [Diogo Sardagna](https://www.linkedin.com/in/diogo-sardagna)  
-**Email:** diogosardagna.work@gmail.com
-
----
-
 **Nota técnica:** O header `X-User-ID` é temporário. No sistema final, o userId virá do token JWT decodificado no filtro de autenticação. Mantive assim pra focar primeiro na lógica de negócio antes de adicionar a camada de segurança.
