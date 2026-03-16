@@ -25,9 +25,9 @@ Queria aprender Spring Boot construindo algo além de CRUD básico. Então criei
 
 ## Stack Técnica
 
-- **Backend:** Java 17, Spring Boot 3.x  
+- **Backend:** Java 25, Spring Boot 4.x  
 - **Persistência:** Spring Data JPA, Hibernate, PostgreSQL  
-- **Arquitetura:** Camadas (Controller → Service → Repository)  
+- **Arquitetura:** Camadas (Controller -> Service -> Repository)  
 - **Padrões:** DTOs para Request/Response, Soft Delete, Timestamp Automático
 
 ---
@@ -35,12 +35,13 @@ Queria aprender Spring Boot construindo algo além de CRUD básico. Então criei
 ## Modelagem do Banco
 
 ```
-User (1) ──→ (1) Address
-  │
-  ├──→ (N) CartItem ──→ (1) Product
-  │
-  └──→ (N) Order
-           └──→ (N) OrderItem ──→ (1) Product
+User (1) -> (1) Address
+  |
+   ->(N) CartItem -> (1) Product
+  |
+   -> (N) Order
+            |
+             -> (N) OrderItem -> (1) Product
 ```
 
 **Decisões de design:**
@@ -62,8 +63,8 @@ User (1) ──→ (1) Address
 
 ### 2. Carrinho de Compras
 ```java
-// Se produto já está no carrinho → atualiza quantidade
-// Se é novo → cria CartItem
+// Se produto já está no carrinho -> atualiza quantidade
+// Se é novo -> cria CartItem
 // Sempre valida estoque antes de adicionar
 ```
 - Adicionar/remover items
@@ -80,7 +81,7 @@ User (1) ──→ (1) Address
 5. Limpa o carrinho
 6. Retorna OrderResponse com todos os detalhes
 
-**Estados do pedido:** PENDING → CONFIRMED → SHIPPED → DELIVERED (ou CANCELLED)
+**Estados do pedido:** PENDING -> CONFIRMED -> SHIPPED -> DELIVERED (ou CANCELLED)
 
 ### 4. Gestão de Usuários
 - CRUD de usuários
