@@ -1,8 +1,8 @@
 # Spring E-commerce API
 
-![Java](https://img.shields.io/badge/Java-17+-orange?style=flat-square&logo=java)
-![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.x-brightgreen?style=flat-square&logo=springboot)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=flat-square&logo=postgresql)
+![Java](https://img.shields.io/badge/Java-25+-orange?style=flat-square&logo=java)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-4.x-brightgreen?style=flat-square&logo=springboot)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-18-blue?style=flat-square&logo=postgresql)
 ![Status](https://img.shields.io/badge/status-in_development-yellow?style=flat-square)
 
 ---
